@@ -184,10 +184,18 @@
             font-weight: bold;
         }
         .summary-card .value {
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             font-weight: bold;
             color: var(--primary-dark);
             margin-top: 4px;
+        }
+
+        /* Analytics Grid */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 15px;
+            width: 100%;
         }
 
         /* Scanner Kamera Container */
@@ -251,7 +259,7 @@
         .total-qty { font-size: 1.1rem; color: #333; font-weight: bold; margin-bottom: 10px; }
 
         /* Indicator Status Sync */
-        #sync-status {
+        #sync-status, #printer-status {
             font-size: 0.82rem;
             color: white;
             background: rgba(0,0,0,0.2);
@@ -307,30 +315,32 @@
         /* --- STYLE CETAK STRUK PRESISI UNTUK PRINTER THERMAL 58mm --- */
         @page {
             size: auto;
-            margin: 0mm; /* Menghilangkan Margin Browser */
+            margin: 0mm;
         }
 
         @media print {
             body * { visibility: hidden; }
-            #receipt-area, #receipt-area *, #return-receipt-area, #return-receipt-area * { visibility: visible; }
+            #receipt-area, #receipt-area *, #return-receipt-area, #return-receipt-area * { 
+                visibility: visible; 
+                font-weight: normal !important;
+            }
             #receipt-area, #return-receipt-area { 
                 display: block; 
                 position: absolute; 
-                left: 8mm; /* DIGESER LEBIH KE KANAN SUPAYA TEKS KIRI TDK TERPOTONG */
+                left: 8mm;
                 top: 0; 
-                width: 44mm; /* DIBUAT LEBIH RAMPING AGAR PRESISI DI TENGAH KERTAS 58mm */
+                width: 44mm;
                 font-family: monospace; 
                 padding: 0;
                 margin: 0;
             }
-            .receipt-header { text-align: center; font-weight: bold; font-size: 0.8rem; border-bottom: 1px dashed #000; padding-bottom: 4px; }
+            .receipt-header { text-align: center; font-size: 0.8rem; border-bottom: 1px dashed #000; padding-bottom: 4px; }
             .receipt-table { width: 100%; margin: 4px 0; border: none; border-collapse: collapse; }
             .receipt-table tr { page-break-inside: avoid; }
             .receipt-table th, .receipt-table td { border: none; font-size: 0.68rem; padding: 2px 0; vertical-align: top; }
             .receipt-footer { text-align: center; border-top: 1px dashed #000; padding-top: 4px; margin-top: 6px; font-size: 0.68rem; }
             .app-footer { display: none; }
             
-            /* Sembunyikan kode escape kick-out cash drawer dari tampilan fisik kertas */
             .drawer-kick {
                 display: inline-block;
                 width: 0;
@@ -368,8 +378,12 @@
     <div id="app-content">
         <header>
             <h1>STAND ANANDA</h1>
-            <div id="sync-status"> Memeriksa Koneksi...</div>
-            <div class="user-info-bar">
+            <div style="display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;">
+                <div id="sync-status"> Memeriksa Koneksi...</div>
+                <div id="printer-status" style="background: rgba(158,158,158,0.85);"> Printer Serial Off</div>
+                <button onclick="connectSerialPrinter()" class="btn-warning" style="padding: 3px 10px; font-size: 0.78rem; border-radius: 12px;"> Sambung Printer Serial</button>
+            </div>
+            <div class="user-info-bar" style="margin-top: 8px;">
                 <span>Logged in as: <b id="lblUserRole">-</b></span>
                 <button class="btn-logout" onclick="handleLogout()"> Logout</button>
             </div>
@@ -379,6 +393,7 @@
                 <button class="nav-btn" id="btn-tab-master" onclick="switchTab('master-barang')">Master Barang</button>
                 <button class="nav-btn" id="btn-tab-manajemen" onclick="switchTab('manajemen-produk')">Manajemen Produk</button>
                 <button class="nav-btn" id="btn-tab-laporan" onclick="switchTab('laporan-penjualan')">Laporan Penjualan</button>
+                <button class="nav-btn" id="btn-tab-analisis" onclick="switchTab('analisis-data')">Analisis Data</button>
             </nav>
         </header>
 
@@ -476,12 +491,11 @@
                 </div>
             </div>
 
-            <!-- MENU 2: MASTER BARANG (HANYA DAFTAR PRODUK & FILTER) -->
+            <!-- MENU 2: MASTER BARANG -->
             <div id="master-barang" class="tab-content">
                 <div class="full-width-panel">
                     <div class="panel">
                         <h2>Daftar Barang Terdaftar</h2>
-                        <!-- INPUT FILTER PENCARIAN TERPISAH (BARCODE, NAMA, HARGA) -->
                         <div style="display: flex; gap: 10px; margin-top: 10px; margin-bottom: 10px; flex-wrap: wrap;">
                             <input type="text" id="searchBarcode" placeholder="Filter Kode Barcode..." oninput="filterProductTable()" style="flex: 1; min-width: 150px; padding: 8px; font-size: 0.88rem;">
                             <input type="text" id="searchName" placeholder="Filter Nama Barang..." oninput="filterProductTable()" style="flex: 2; min-width: 200px; padding: 8px; font-size: 0.88rem;">
@@ -501,7 +515,6 @@
                                 <tbody id="stockTable"></tbody>
                             </table>
                         </div>
-                        <!-- NAVIGASI PAGINATION BARANG -->
                         <div class="pagination-container">
                             <span id="productPageInfo" style="font-size: 0.85rem; color: #555;">Halaman 1 dari 1</span>
                             <div class="pagination-btn-group" id="productPaginationNav"></div>
@@ -510,7 +523,7 @@
                 </div>
             </div>
 
-            <!-- MENU 3: MANAJEMEN PRODUK (SYNC, IMPORT & TAMBAH MANUAL) -->
+            <!-- MENU 3: MANAJEMEN PRODUK -->
             <div id="manajemen-produk" class="tab-content">
                 <div class="full-width-panel">
                     <div class="panel">
@@ -558,18 +571,27 @@
                             </div>
                         </div>
 
-                        <!-- FILTER WAKTU LAPORAN PENJUALAN -->
-                        <div style="display: flex; gap: 10px; align-items: center; background: #e8f5e9; padding: 10px 15px; border-radius: 6px; border: 1px solid #c8e6c9; margin-bottom: 15px; flex-wrap: wrap;">
-                            <label style="font-weight: bold; font-size: 0.88rem; color: #2e7d32;">Filter Tanggal:</label>
-                            <select id="timeFilterType" onchange="toggleDateInputs()" style="padding: 6px 10px; font-size: 0.88rem;">
-                                <option value="all">Semua Waktu</option>
-                                <option value="today">Hari Ini</option>
-                                <option value="custom">Rentang Tanggal Custom</option>
-                            </select>
-                            <div id="customDateRange" style="display: none; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                <input type="date" id="startDate" onchange="filterHistoryByDate()" style="padding: 5px 8px; font-size: 0.85rem;">
-                                <span style="font-size: 0.85rem; color: #555;">s/d</span>
-                                <input type="date" id="endDate" onchange="filterHistoryByDate()" style="padding: 5px 8px; font-size: 0.85rem;">
+                        <!-- FILTER WAKTU DAN KASIR LAPORAN -->
+                        <div style="display: flex; gap: 15px; align-items: center; background: #e8f5e9; padding: 10px 15px; border-radius: 6px; border: 1px solid #c8e6c9; margin-bottom: 15px; flex-wrap: wrap;">
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <label style="font-weight: bold; font-size: 0.88rem; color: #2e7d32;">Filter Tanggal:</label>
+                                <select id="timeFilterType" onchange="toggleDateInputs()" style="padding: 6px 10px; font-size: 0.88rem;">
+                                    <option value="all">Semua Waktu</option>
+                                    <option value="today">Hari Ini</option>
+                                    <option value="custom">Rentang Tanggal Custom</option>
+                                </select>
+                                <div id="customDateRange" style="display: none; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                    <input type="date" id="startDate" onchange="filterHistoryByDate()" style="padding: 5px 8px; font-size: 0.85rem;">
+                                    <span style="font-size: 0.85rem; color: #555;">s/d</span>
+                                    <input type="date" id="endDate" onchange="filterHistoryByDate()" style="padding: 5px 8px; font-size: 0.85rem;">
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <label style="font-weight: bold; font-size: 0.88rem; color: #2e7d32;">Filter Kasir:</label>
+                                <select id="cashierFilterSelect" onchange="filterHistoryByDate()" style="padding: 6px 10px; font-size: 0.88rem;">
+                                    <option value="all">Semua Kasir</option>
+                                </select>
                             </div>
                         </div>
 
@@ -595,6 +617,7 @@
                                         <th>ID Transaksi (Klik untuk Cetak)</th>
                                         <th>Kasir (User)</th>
                                         <th>Waktu</th>
+                                        <th>Kode Barang</th>
                                         <th>Detail Item</th>
                                         <th>Total Akhir</th>
                                         <th>Bayar</th>
@@ -605,10 +628,89 @@
                                 <tfoot id="historyTableFoot"></tfoot>
                             </table>
                         </div>
-                        <!-- NAVIGASI PAGINATION RIWAYAT -->
                         <div class="pagination-container">
                             <span id="historyPageInfo" style="font-size: 0.85rem; color: #555;">Halaman 1 dari 1</span>
                             <div class="pagination-btn-group" id="historyPaginationNav"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MENU 5: ANALISIS DATA -->
+            <div id="analisis-data" class="tab-content">
+                <div class="full-width-panel">
+                    <div class="panel">
+                        <h2>Analisis Penjualan & Performa Store</h2>
+                        
+                        <!-- FILTER WAKTU DAN KASIR ANALISIS -->
+                        <div style="display: flex; gap: 15px; align-items: center; background: #e0f2fe; padding: 10px 15px; border-radius: 6px; border: 1px solid #bae6fd; margin-top: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <label style="font-weight: bold; font-size: 0.88rem; color: #0369a1;">Filter Tanggal:</label>
+                                <select id="analyticsTimeFilterType" onchange="toggleAnalyticsDateInputs()" style="padding: 6px 10px; font-size: 0.88rem;">
+                                    <option value="all">Semua Waktu</option>
+                                    <option value="today">Hari Ini</option>
+                                    <option value="custom">Rentang Tanggal Custom</option>
+                                </select>
+                                <div id="analyticsCustomDateRange" style="display: none; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                    <input type="date" id="analyticsStartDate" onchange="renderAnalytics()" style="padding: 5px 8px; font-size: 0.85rem;">
+                                    <span style="font-size: 0.85rem; color: #555;">s/d</span>
+                                    <input type="date" id="analyticsEndDate" onchange="renderAnalytics()" style="padding: 5px 8px; font-size: 0.85rem;">
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <label style="font-weight: bold; font-size: 0.88rem; color: #0369a1;">Filter Kasir:</label>
+                                <select id="analyticsCashierFilterSelect" onchange="renderAnalytics()" style="padding: 6px 10px; font-size: 0.88rem;">
+                                    <option value="all">Semua Kasir</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="summary-card-container" style="margin-top: 15px;">
+                            <div class="summary-card" style="border-left-color: #0288d1;">
+                                <div class="title">Rata-rata Nilai Transaksi</div>
+                                <div class="value" id="analyticsAvgTrx">Rp 0</div>
+                            </div>
+                            <div class="summary-card" style="border-left-color: #2e7d32;">
+                                <div class="title">Barang Terjual Paling Banyak</div>
+                                <div class="value" id="analyticsTopProduct">-</div>
+                            </div>
+                            <div class="summary-card" style="border-left-color: #f57c00;">
+                                <div class="title">Kasir Paling Aktif</div>
+                                <div class="value" id="analyticsTopCashier">-</div>
+                            </div>
+                        </div>
+
+                        <div class="analytics-grid" style="margin-top: 10px;">
+                            <div style="border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #fafafa;">
+                                <h3 style="font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 10px;"> Top 5 Produk Terlaris (Qty)</h3>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Kode Barcode</th>
+                                            <th>Nama Barang</th>
+                                            <th>Harga (Rp)</th>
+                                            <th>Terjual</th>
+                                            <th>Total Omset Item</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="topProductsTable"></tbody>
+                                </table>
+                            </div>
+
+                            <div style="border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #fafafa;">
+                                <h3 style="font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 10px;"> Performa Penjualan Kasir</h3>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Nama Kasir</th>
+                                            <th>Jumlah Trx</th>
+                                            <th>Total Omset</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cashierPerformanceTable"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -617,13 +719,12 @@
 
         <!-- WATERMARK FOOTER -->
         <footer class="app-footer">
-            &copy;2026 <span class="brand-monn">MONN.</span> All Rights Reserved
+            &copy;2026 <span class="brand-monn">ANANDA TASIKMALAYA</span>. All Rights Reserved
         </footer>
     </div>
 
-    <!-- AREA STRUK PENJUALAN UNTUK DICETAK -->
+    <!-- AREA STRUK PENJUALAN UNTUK DICETAK FALLBACK (BROWSER PRINT) -->
     <div id="receipt-area">
-        <!-- Perintah ESC/POS Kick-out cash drawer pada pencetakan printer thermal -->
         <span class="drawer-kick">&#x1B;&#x70;&#x00;&#x19;&#xFA;</span>
         <div class="receipt-header">
             STAND ANANDA<br>
@@ -644,7 +745,7 @@
             <tbody id="receiptItems"></tbody>
         </table>
         <hr style="border: none; border-top: 1px dashed #000;">
-        <div style="font-size: 0.70rem; display: flex; justify-content: space-between; margin-top: 4px; font-weight: bold;">
+        <div style="font-size: 0.70rem; display: flex; justify-content: space-between; margin-top: 4px;">
             <span>Total:</span> <span id="rTotal"></span>
         </div>
         <div style="font-size: 0.70rem; display: flex; justify-content: space-between;">
@@ -660,7 +761,8 @@
     </div>
 
     <script>
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxdLn6TPHB-ja7UShsQiYDVHMPBtVsQrlKfh7kKHYP6Y0NICUu3iU68JqZqsYGumPb3FA/exec";
+        // URL GOOGLE APPS SCRIPT
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzk8tEWae-AK8MNdI0agM7Qh7zQOEa4eYhvN4IKxNNLfJPgR24bjgmjGgY4_KYARXGf/exec";
 
         const USERS = [
             { username: "Admin",  password: "Admin123", role: "Admin", name: "Administrator" },
@@ -684,10 +786,13 @@
         let lastScannedCode = "";
         let lastScanTime = 0;
 
-        // VARIABEL PAGINATION
         const PAGE_SIZE = 50;
         let currentProductPage = 1;
         let currentHistoryPage = 1;
+
+        // VARIABLE SERIAL PRINTER WEB SERIAL API
+        let serialPort = null;
+        let serialWriter = null;
 
         function normalizeBarcode(rawBarcode) {
             if (!rawBarcode) return '';
@@ -717,6 +822,12 @@
                 fetchProductsFromSheets();
                 loadHistoryFromSheets();
             }
+
+            setInterval(() => {
+                if (navigator.onLine) {
+                    loadHistoryFromSheets();
+                }
+            }, 10000);
         };
 
         function updateSyncStatusUI() {
@@ -735,6 +846,133 @@
                 statusEl.innerHTML = ` Offline (Tersimpan Lokal: ${offlineQueue.length} antrean)`;
                 statusEl.style.background = "rgba(244, 67, 54, 0.85)";
             }
+        }
+
+        /* --- LOGIKA WEB SERIAL API UNTUK PRINTER ESC/POS RAW TEXT --- */
+        async function connectSerialPrinter() {
+            if (!("serial" in navigator)) {
+                alert("Browser Anda belum mendukung Web Serial API. Gunakan Chrome atau Edge!");
+                return;
+            }
+
+            try {
+                serialPort = await navigator.serial.requestPort();
+                // 9600 Baudrate umum untuk adapter USB-to-Serial / Thermal / Dot Matrix Serial Printer
+                await serialPort.open({ baudRate: 9600 });
+                serialWriter = serialPort.writable.getWriter();
+
+                const pStatus = document.getElementById('printer-status');
+                if (pStatus) {
+                    pStatus.innerText = " Printer Serial Active";
+                    pStatus.style.background = "rgba(76, 175, 80, 0.85)";
+                }
+                alert("Berhasil terhubung ke Printer Serial!");
+            } catch (err) {
+                console.error("Gagal menyambung printer serial:", err);
+                alert("Koneksi printer serial dibatalkan / gagal: " + err.message);
+            }
+        }
+
+        async function printRawEscPos(rawDataString) {
+            if (!serialPort || !serialWriter) {
+                // Fallback ke window.print jika serial printer tidak terkoneksi
+                return false;
+            }
+
+            try {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(rawDataString);
+                await serialWriter.write(data);
+                return true;
+            } catch (err) {
+                console.error("Gagal mengirim perintah ke printer serial:", err);
+                return false;
+            }
+        }
+
+        function buildEscPosReceiptText(trx, isRetur = false) {
+            const ESC = "\x1B";
+            const GS = "\x1D";
+
+            let raw = "";
+
+            // Inisialisasi Printer
+            raw += ESC + "@";
+            // Set ke Font Draft / Font Bawaan Printer agar cetak cepat
+            raw += ESC + "M" + "\x00"; 
+
+            // Kick Cash Drawer
+            raw += ESC + "p" + "\x00" + "\x19" + "\xFA";
+
+            // Align Center
+            raw += ESC + "a" + "\x01";
+            raw += "STAND ANANDA\n";
+            raw += (isRetur ? "STRUK RETUR PENUKARAN" : "Struk Pembayaran") + "\n";
+            raw += "--------------------------------\n";
+
+            // Align Left
+            raw += ESC + "a" + "\x00";
+            raw += "Kasir: " + (trx.cashier || '-') + "\n";
+            raw += "Tgl  : " + trx.date + "\n";
+            raw += "--------------------------------\n";
+
+            // Render Item Retur
+            if (isRetur && trx.returnedItems) {
+                raw += "[RETUR DIKEMBALIKAN]\n";
+                trx.returnedItems.forEach(item => {
+                    let code = item.barcode ? "[" + item.barcode + "] " : "";
+                    let nameLine = code + item.name;
+                    if (nameLine.length > 20) nameLine = nameLine.substring(0, 20);
+                    
+                    let qtyStr = String(item.qty).padStart(3, " ");
+                    let totalStr = ("-" + (item.price * item.qty).toLocaleString('id-ID')).padStart(9, " ");
+                    
+                    raw += nameLine.padEnd(20, " ") + qtyStr + totalStr + "\n";
+                });
+                raw += "--------------------------------\n";
+                raw += "[BARANG PENGGANTI]\n";
+            }
+
+            // Render Item Belanja
+            trx.items.forEach(item => {
+                const origSubtotal = item.price * item.qty;
+                const disc = parseFloat(item.discountValue) || 0;
+                const finalSubtotal = origSubtotal - disc;
+
+                let code = item.barcode ? "[" + item.barcode + "] " : "";
+                let nameLine = code + item.name;
+                if (nameLine.length > 20) nameLine = nameLine.substring(0, 20);
+
+                let qtyStr = String(item.qty).padStart(3, " ");
+                let totalStr = finalSubtotal.toLocaleString('id-ID').padStart(9, " ");
+
+                raw += nameLine.padEnd(20, " ") + qtyStr + totalStr + "\n";
+                if (disc > 0) {
+                    raw += "  (Disc: -Rp " + disc.toLocaleString('id-ID') + ")\n";
+                }
+            });
+
+            raw += "--------------------------------\n";
+
+            // Total / Bayar / Kembali
+            let totalVal = "Rp " + (trx.total || 0).toLocaleString('id-ID');
+            let payVal = "Rp " + (trx.pay || 0).toLocaleString('id-ID');
+            let changeVal = "Rp " + (trx.change || 0).toLocaleString('id-ID');
+
+            raw += "Total  : " + totalVal.padStart(23, " ") + "\n";
+            raw += "Bayar  : " + payVal.padStart(23, " ") + "\n";
+            raw += "Kembali: " + changeVal.padStart(23, " ") + "\n";
+            raw += "--------------------------------\n";
+
+            // Align Center Footer
+            raw += ESC + "a" + "\x01";
+            raw += "--- Terima Kasih ---\n";
+            raw += "Selamat Berbelanja Kembali\n\n\n\n";
+
+            // Paper Feed & Cut / Line Feeds
+            raw += ESC + "d" + "\x05";
+
+            return raw;
         }
 
         async function syncToGoogleSheets(payload) {
@@ -805,8 +1043,7 @@
         function loadHistoryFromSheets() {
             if (!navigator.onLine || !GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("PASANG_URL")) return;
 
-            const cashierName = currentUser ? currentUser.name : '';
-            const url = `${GOOGLE_SCRIPT_URL}?action=getTransactions&cashier=${encodeURIComponent(cashierName)}`;
+            const url = `${GOOGLE_SCRIPT_URL}?action=getTransactions`;
 
             fetch(url)
                 .then(response => response.json())
@@ -814,7 +1051,9 @@
                     if (data && data.status === 'success' && Array.isArray(data.transactions)) {
                         salesHistory = data.transactions;
                         localStorage.setItem('salesHistory', JSON.stringify(salesHistory));
+                        populateCashierFilterOptions();
                         renderHistory();
+                        renderAnalytics();
                     }
                 })
                 .catch(err => console.error("Gagal menarik data riwayat:", err));
@@ -853,6 +1092,7 @@
             document.getElementById('btn-tab-master').style.display = 'inline-block';
             document.getElementById('btn-tab-manajemen').style.display = 'inline-block';
             document.getElementById('btn-tab-laporan').style.display = 'inline-block';
+            document.getElementById('btn-tab-analisis').style.display = 'inline-block';
 
             if (currentUser.role === 'Kasir') {
                 btnClearHistory.style.display = 'none';
@@ -861,7 +1101,9 @@
             }
 
             updateStockTable();
+            populateCashierFilterOptions();
             renderHistory();
+            renderAnalytics();
             document.getElementById('barcodeInput').focus();
         }
 
@@ -874,12 +1116,12 @@
 
             document.getElementById(tabId).classList.add('active');
             
-            // Tandai tombol navigasi yang aktif
             const btnMap = {
                 'beranda': 'btn-tab-beranda',
                 'master-barang': 'btn-tab-master',
                 'manajemen-produk': 'btn-tab-manajemen',
-                'laporan-penjualan': 'btn-tab-laporan'
+                'laporan-penjualan': 'btn-tab-laporan',
+                'analisis-data': 'btn-tab-analisis'
             };
             if (btnMap[tabId]) {
                 document.getElementById(btnMap[tabId]).classList.add('active');
@@ -897,6 +1139,8 @@
                 fetchProductsFromSheets();
             } else if (tabId === 'laporan-penjualan') {
                 loadHistoryFromSheets();
+            } else if (tabId === 'analisis-data') {
+                renderAnalytics();
             }
         }
 
@@ -1065,7 +1309,6 @@
             if (navigator.vibrate) navigator.vibrate(100);
         }
 
-        /* --- EVENT LISTENER KODE INPUT BARCODE DENGAN TOMBOL ENTER, HOME, DAN INSERT (DUA ARAH) --- */
         document.getElementById('barcodeInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -1088,7 +1331,6 @@
             }
         });
 
-        /* --- EVENT LISTENER INPUT UANG DIBAYAR (ENTER UNTUK PROCESS TRANSAKSI) --- */
         document.getElementById('payAmount').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -1192,7 +1434,6 @@
                 `;
             });
 
-            // ATTACH EVENT LISTENER UNTUK TOMBOL HOME DAN INSERT (PADA INPUT DISKON)
             const discountInputs = document.querySelectorAll('.cart-discount-input');
             discountInputs.forEach(input => {
                 input.addEventListener('keydown', function(e) {
@@ -1350,7 +1591,7 @@
 
             const excelData = [];
             filteredHistory.forEach(trx => {
-                trx.items.forEach(item => {
+                trx.items.forEach((item, itemIdx) => {
                     const originalSubtotal = item.price * item.qty;
                     const itemDiscount = calculateItemDiscount(item);
                     const finalSubtotal = originalSubtotal - itemDiscount;
@@ -1365,9 +1606,9 @@
                         'Qty': item.qty,
                         'Diskon Item (Rp)': itemDiscount,
                         'Subtotal Akhir (Rp)': finalSubtotal,
-                        'Total Transaksi (Rp)': trx.total,
-                        'Uang Dibayar (Rp)': trx.pay,
-                        'Kembalian (Rp)': trx.change
+                        'Total Transaksi (Rp)': itemIdx === 0 ? trx.total : "",
+                        'Uang Dibayar (Rp)': itemIdx === 0 ? trx.pay : "",
+                        'Kembalian (Rp)': itemIdx === 0 ? trx.change : ""
                     });
                 });
             });
@@ -1405,13 +1646,11 @@
             alert('Produk berhasil disimpan!');
         }
 
-        /* --- FUNGSI FILTER PENCARIAN DARI MASTER BARANG (TERPISAH KODE, NAMA, HARGA) --- */
         function filterProductTable() {
             currentProductPage = 1;
             updateStockTable();
         }
 
-        /* --- FUNGSI UPDATE MASTER BARANG DENGAN PAGINATION & MULTI-FILTER --- */
         function updateStockTable() {
             const tbody = document.getElementById('stockTable');
             if (!tbody) return;
@@ -1451,7 +1690,6 @@
                 });
             }
 
-            // Update Keterangan Halaman & Tombol Navigasi
             const pageInfo = document.getElementById('productPageInfo');
             if (pageInfo) {
                 pageInfo.innerText = `Menampilkan ${filteredProducts.length > 0 ? startIndex + 1 : 0} - ${Math.min(endIndex, filteredProducts.length)} dari ${filteredProducts.length} barang (Halaman ${currentProductPage} dari ${totalPages})`;
@@ -1482,7 +1720,7 @@
             updateStockTable();
         }
 
-        function processTransaction() {
+        async function processTransaction() {
             if (currentMode === 'retur') {
                 if (returnCart.length === 0) {
                     alert('Tambahkan minimal 1 barang yang dikembalikan!');
@@ -1525,10 +1763,12 @@
 
                 salesHistory.unshift(transactionRecord);
                 localStorage.setItem('salesHistory', JSON.stringify(salesHistory));
+                populateCashierFilterOptions();
                 renderHistory();
+                renderAnalytics();
 
                 syncToGoogleSheets({ action: 'saveTransaction', trx: transactionRecord });
-                populateAndPrintReceipt(transactionRecord, true);
+                await populateAndPrintReceipt(transactionRecord, true);
 
                 cart = [];
                 returnCart = [];
@@ -1566,7 +1806,9 @@
                 salesHistory.unshift(transactionRecord);
                 localStorage.setItem('salesHistory', JSON.stringify(salesHistory));
                 currentHistoryPage = 1;
+                populateCashierFilterOptions();
                 renderHistory();
+                renderAnalytics();
 
                 cart.forEach(cartItem => {
                     const product = products.find(p => p.barcode === cartItem.barcode);
@@ -1579,7 +1821,7 @@
 
                 syncToGoogleSheets({ action: 'saveTransaction', trx: transactionRecord });
 
-                populateAndPrintReceipt(transactionRecord, false);
+                await populateAndPrintReceipt(transactionRecord, false);
 
                 cart = [];
                 document.getElementById('payAmount').value = '';
@@ -1588,58 +1830,96 @@
             document.getElementById('barcodeInput').focus();
         }
 
-        /* --- PERBAIKAN PADA CETAK STRUK DENGAN KODE BARANG & DISKON RIWAYAT --- */
-        function populateAndPrintReceipt(trx, isRetur = false) {
-            document.getElementById('rCashier').innerText = trx.cashier || '-';
-            document.getElementById('rDate').innerText = trx.date;
-            document.getElementById('rTypeTitle').innerText = isRetur ? "STRUK RETUR PENUKARAN" : "Struk Pembayaran";
+        async function populateAndPrintReceipt(trx, isRetur = false) {
+            // Cobalah untuk cetak lewat Web Serial API (ESC/POS Raw)
+            const rawText = buildEscPosReceiptText(trx, isRetur);
+            const printedViaSerial = await printRawEscPos(rawText);
 
-            const receiptItems = document.getElementById('receiptItems');
-            receiptItems.innerHTML = '';
+            if (!printedViaSerial) {
+                // Jika printer serial belum tersambung, gunakan window.print() biasa
+                document.getElementById('rCashier').innerText = trx.cashier || '-';
+                document.getElementById('rDate').innerText = trx.date;
+                document.getElementById('rTypeTitle').innerText = isRetur ? "STRUK RETUR PENUKARAN" : "Struk Pembayaran";
 
-            if (isRetur && trx.returnedItems) {
-                receiptItems.innerHTML += `<tr><td colspan="3"><b>[RETUR DIKEMBALIKAN]</b></td></tr>`;
-                trx.returnedItems.forEach(item => {
+                const receiptItems = document.getElementById('receiptItems');
+                receiptItems.innerHTML = '';
+
+                if (isRetur && trx.returnedItems) {
+                    receiptItems.innerHTML += `<tr><td colspan="3">[RETUR DIKEMBALIKAN]</td></tr>`;
+                    trx.returnedItems.forEach(item => {
+                        const itemCode = item.barcode ? `[${item.barcode}] ` : '';
+                        receiptItems.innerHTML += `
+                            <tr>
+                                <td>${itemCode}${item.name}</td>
+                                <td style="text-align: center;">${item.qty}</td>
+                                <td style="text-align: right;">-${(item.price * item.qty).toLocaleString('id-ID')}</td>
+                            </tr>
+                        `;
+                    });
+                    receiptItems.innerHTML += `<tr><td colspan="3">[BARANG PENGGANTI]</td></tr>`;
+                }
+
+                trx.items.forEach(item => {
+                    const origSubtotal = item.price * item.qty;
+                    const disc = parseFloat(item.discountValue) || 0;
+                    const finalSubtotal = origSubtotal - disc;
+
                     const itemCode = item.barcode ? `[${item.barcode}] ` : '';
+                    let itemText = itemCode + item.name;
+                    if (disc > 0) {
+                        itemText += '<br><small style="color:#555;">(Disc: -Rp ' + disc.toLocaleString('id-ID') + ')</small>';
+                    }
+
                     receiptItems.innerHTML += `
                         <tr>
-                            <td>${itemCode}${item.name}</td>
+                            <td>${itemText}</td>
                             <td style="text-align: center;">${item.qty}</td>
-                            <td style="text-align: right;">-${(item.price * item.qty).toLocaleString('id-ID')}</td>
+                            <td style="text-align: right;">${finalSubtotal.toLocaleString('id-ID')}</td>
                         </tr>
                     `;
                 });
-                receiptItems.innerHTML += `<tr><td colspan="3"><b>[BARANG PENGGANTI]</b></td></tr>`;
+
+                document.getElementById('rTotal').innerText = "Rp " + (trx.total || 0).toLocaleString('id-ID');
+                document.getElementById('rPay').innerText = "Rp " + (trx.pay || 0).toLocaleString('id-ID');
+                document.getElementById('rChange').innerText = "Rp " + (trx.change || 0).toLocaleString('id-ID');
+
+                window.print();
             }
-
-            trx.items.forEach(item => {
-                const origSubtotal = item.price * item.qty;
-                const disc = parseFloat(item.discountValue) || 0;
-                const finalSubtotal = origSubtotal - disc;
-
-                const itemCode = item.barcode ? `[${item.barcode}] ` : '';
-                let itemText = itemCode + item.name;
-                if (disc > 0) {
-                    itemText += '<br><small style="color:#555;">(Disc: -Rp ' + disc.toLocaleString('id-ID') + ')</small>';
-                }
-
-                receiptItems.innerHTML += `
-                    <tr>
-                        <td>${itemText}</td>
-                        <td style="text-align: center;">${item.qty}</td>
-                        <td style="text-align: right;">${finalSubtotal.toLocaleString('id-ID')}</td>
-                    </tr>
-                `;
-            });
-
-            document.getElementById('rTotal').innerText = "Rp " + (trx.total || 0).toLocaleString('id-ID');
-            document.getElementById('rPay').innerText = "Rp " + (trx.pay || 0).toLocaleString('id-ID');
-            document.getElementById('rChange').innerText = "Rp " + (trx.change || 0).toLocaleString('id-ID');
-
-            window.print();
         }
 
-        /* --- KONTROL FILTER WAKTU LAPORAN PENJUALAN --- */
+        function populateCashierFilterOptions() {
+            const selectEl = document.getElementById('cashierFilterSelect');
+            const analyticsSelectEl = document.getElementById('analyticsCashierFilterSelect');
+            
+            const cashierSet = new Set();
+            USERS.forEach(u => {
+                if (u.name) cashierSet.add(u.name);
+            });
+            salesHistory.forEach(trx => {
+                if (trx.cashier) cashierSet.add(trx.cashier);
+            });
+
+            const updateSelectOptions = (el) => {
+                if (!el) return;
+                const selectedValue = el.value;
+                el.innerHTML = '<option value="all">Semua Kasir</option>';
+                cashierSet.forEach(cashierName => {
+                    const option = document.createElement('option');
+                    option.value = cashierName;
+                    option.textContent = cashierName;
+                    el.appendChild(option);
+                });
+                if (Array.from(el.options).some(opt => opt.value === selectedValue)) {
+                    el.value = selectedValue;
+                } else {
+                    el.value = 'all';
+                }
+            };
+
+            updateSelectOptions(selectEl);
+            updateSelectOptions(analyticsSelectEl);
+        }
+
         function toggleDateInputs() {
             const filterType = document.getElementById('timeFilterType').value;
             const customContainer = document.getElementById('customDateRange');
@@ -1652,6 +1932,18 @@
             filterHistoryByDate();
         }
 
+        function toggleAnalyticsDateInputs() {
+            const filterType = document.getElementById('analyticsTimeFilterType').value;
+            const customContainer = document.getElementById('analyticsCustomDateRange');
+
+            if (filterType === 'custom') {
+                customContainer.style.display = 'flex';
+            } else {
+                customContainer.style.display = 'none';
+            }
+            renderAnalytics();
+        }
+
         function filterHistoryByDate() {
             currentHistoryPage = 1;
             renderHistory();
@@ -1659,7 +1951,6 @@
 
         function parseTrxDate(dateStr) {
             if (!dateStr) return null;
-            // Menangani Format ID "DD/MM/YYYY, HH.MM.SS" atau standar ISO/Date String
             let parts = dateStr.split(',');
             if (parts.length > 0) {
                 let dateParts = parts[0].trim().split('/');
@@ -1675,21 +1966,24 @@
         }
 
         function getFilteredHistory() {
-            let roleFiltered = (currentUser && currentUser.role === 'Kasir')
-                ? salesHistory.filter(trx => trx.cashier === currentUser.name)
-                : salesHistory;
+            let filtered = salesHistory;
+
+            const selectedCashier = document.getElementById('cashierFilterSelect') ? document.getElementById('cashierFilterSelect').value : 'all';
+            if (selectedCashier !== 'all') {
+                filtered = filtered.filter(trx => trx.cashier === selectedCashier);
+            }
 
             const filterType = document.getElementById('timeFilterType') ? document.getElementById('timeFilterType').value : 'all';
 
             if (filterType === 'all') {
-                return roleFiltered;
+                return filtered;
             }
 
             const today = new Date();
             today.setHours(0,0,0,0);
 
             if (filterType === 'today') {
-                return roleFiltered.filter(trx => {
+                return filtered.filter(trx => {
                     let d = parseTrxDate(trx.date);
                     if (!d) return false;
                     d.setHours(0,0,0,0);
@@ -1701,7 +1995,7 @@
                 const startVal = document.getElementById('startDate').value;
                 const endVal = document.getElementById('endDate').value;
 
-                if (!startVal && !endVal) return roleFiltered;
+                if (!startVal && !endVal) return filtered;
 
                 let startDate = startVal ? new Date(startVal) : null;
                 if (startDate) startDate.setHours(0,0,0,0);
@@ -1709,7 +2003,7 @@
                 let endDate = endVal ? new Date(endVal) : null;
                 if (endDate) endDate.setHours(23,59,59,999);
 
-                return roleFiltered.filter(trx => {
+                return filtered.filter(trx => {
                     let d = parseTrxDate(trx.date);
                     if (!d) return false;
 
@@ -1719,10 +2013,60 @@
                 });
             }
 
-            return roleFiltered;
+            return filtered;
         }
 
-        /* --- FUNGSI RENDER LAPORAN PENJUALAN DENGAN PAGINATION & FILTER WAKTU --- */
+        function getFilteredAnalyticsHistory() {
+            let filtered = salesHistory;
+
+            const selectedCashier = document.getElementById('analyticsCashierFilterSelect') ? document.getElementById('analyticsCashierFilterSelect').value : 'all';
+            if (selectedCashier !== 'all') {
+                filtered = filtered.filter(trx => trx.cashier === selectedCashier);
+            }
+
+            const filterType = document.getElementById('analyticsTimeFilterType') ? document.getElementById('analyticsTimeFilterType').value : 'all';
+
+            if (filterType === 'all') {
+                return filtered;
+            }
+
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            if (filterType === 'today') {
+                return filtered.filter(trx => {
+                    let d = parseTrxDate(trx.date);
+                    if (!d) return false;
+                    d.setHours(0,0,0,0);
+                    return d.getTime() === today.getTime();
+                });
+            }
+
+            if (filterType === 'custom') {
+                const startVal = document.getElementById('analyticsStartDate').value;
+                const endVal = document.getElementById('analyticsEndDate').value;
+
+                if (!startVal && !endVal) return filtered;
+
+                let startDate = startVal ? new Date(startVal) : null;
+                if (startDate) startDate.setHours(0,0,0,0);
+
+                let endDate = endVal ? new Date(endVal) : null;
+                if (endDate) endDate.setHours(23,59,59,999);
+
+                return filtered.filter(trx => {
+                    let d = parseTrxDate(trx.date);
+                    if (!d) return false;
+
+                    if (startDate && d < startDate) return false;
+                    if (endDate && d > endDate) return false;
+                    return true;
+                });
+            }
+
+            return filtered;
+        }
+
         function renderHistory() {
             const tbody = document.getElementById('historyTable');
             const tfoot = document.getElementById('historyTableFoot');
@@ -1732,7 +2076,7 @@
             const filteredHistory = getFilteredHistory();
 
             if (filteredHistory.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#777;">Belum ada riwayat penjualan sesuai filter yang dipilih.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#777;">Belum ada riwayat penjualan sesuai filter yang dipilih.</td></tr>';
                 document.getElementById('summaryTrxCount').innerText = '0';
                 document.getElementById('summaryQtyTotal').innerText = '0 Pcs';
                 document.getElementById('summaryOmsetTotal').innerText = 'Rp 0';
@@ -1763,10 +2107,11 @@
             paginatedHistory.forEach((trx) => {
                 const originalIndex = salesHistory.findIndex(item => item.id === trx.id);
 
+                const codesSummary = trx.items.map(item => item.barcode || '-').join('<br>');
                 const itemsSummary = trx.items.map(item => {
                     const disc = parseFloat(item.discountValue) || 0;
                     return disc > 0 ? item.name + ' (x' + item.qty + ', Disc: -Rp ' + disc.toLocaleString('id-ID') + ')' : item.name + ' (x' + item.qty + ')';
-                }).join(', ');
+                }).join('<br>');
 
                 tbody.innerHTML += `
                     <tr>
@@ -1777,6 +2122,7 @@
                         </td>
                         <td><b>${trx.cashier || '-'}</b></td>
                         <td>${trx.date}</td>
+                        <td><small>${codesSummary}</small></td>
                         <td>${itemsSummary}</td>
                         <td><b>Rp ${(trx.total || 0).toLocaleString('id-ID')}</b></td>
                         <td>Rp ${(trx.pay || 0).toLocaleString('id-ID')}</td>
@@ -1787,7 +2133,7 @@
 
             tfoot.innerHTML = `
                 <tr>
-                    <td colspan="4" style="text-align: right; font-weight: bold;">TOTAL KESELURUHAN (${filteredHistory.length} Transaksi):</td>
+                    <td colspan="5" style="text-align: right; font-weight: bold;">TOTAL KESELURUHAN (${filteredHistory.length} Transaksi):</td>
                     <td><b>Rp ${grandTotalSales.toLocaleString('id-ID')}</b></td>
                     <td><b>Rp ${grandTotalPay.toLocaleString('id-ID')}</b></td>
                     <td><b>Rp ${grandTotalChange.toLocaleString('id-ID')}</b></td>
@@ -1798,7 +2144,6 @@
             document.getElementById('summaryQtyTotal').innerText = grandTotalQty.toLocaleString('id-ID') + ' Pcs';
             document.getElementById('summaryOmsetTotal').innerText = 'Rp ' + grandTotalSales.toLocaleString('id-ID');
 
-            // Update Keterangan Halaman & Tombol Navigasi Laporan
             document.getElementById('historyPageInfo').innerText = `Menampilkan ${startIndex + 1} - ${Math.min(endIndex, filteredHistory.length)} dari ${filteredHistory.length} transaksi (Halaman ${currentHistoryPage} dari ${totalPages})`;
 
             const nav = document.getElementById('historyPaginationNav');
@@ -1819,16 +2164,116 @@
             `;
         }
 
+        /* --- FITUR ANALISIS DATA (BERDASARKAN KODE BARCODE SAJA & DILENGKAPI FILTER) --- */
+        function renderAnalytics() {
+            const filteredAnalytics = getFilteredAnalyticsHistory();
+
+            if (filteredAnalytics.length === 0) {
+                document.getElementById('analyticsAvgTrx').innerText = 'Rp 0';
+                document.getElementById('analyticsTopProduct').innerText = '-';
+                document.getElementById('analyticsTopCashier').innerText = '-';
+                document.getElementById('topProductsTable').innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada data</td></tr>';
+                document.getElementById('cashierPerformanceTable').innerHTML = '<tr><td colspan="3" style="text-align:center;">Belum ada data</td></tr>';
+                return;
+            }
+
+            let totalOmset = 0;
+            let productMap = {};
+            let cashierMap = {};
+
+            filteredAnalytics.forEach(trx => {
+                totalOmset += trx.total || 0;
+
+                // Kasir Stat
+                const c = trx.cashier || 'Unknown';
+                if (!cashierMap[c]) cashierMap[c] = { count: 0, omset: 0 };
+                cashierMap[c].count += 1;
+                cashierMap[c].omset += trx.total || 0;
+
+                // Produk Stat (Diindeks berdasarkan Barcode)
+                trx.items.forEach(item => {
+                    const barcode = normalizeBarcode(item.barcode) || 'NO_BARCODE';
+                    const name = item.name || 'Unknown';
+                    const price = item.price || 0;
+                    const qty = item.qty || 1;
+                    const subtotal = (price * qty) - (parseFloat(item.discountValue) || 0);
+
+                    if (!productMap[barcode]) {
+                        productMap[barcode] = { barcode: barcode, name: name, price: price, qty: 0, omset: 0 };
+                    }
+                    productMap[barcode].qty += qty;
+                    productMap[barcode].omset += subtotal;
+                    if (name !== 'Unknown') productMap[barcode].name = name;
+                    if (price > 0) productMap[barcode].price = price;
+                });
+            });
+
+            // Hitung Rata-rata Transaksi
+            const avgTrx = Math.round(totalOmset / filteredAnalytics.length);
+            document.getElementById('analyticsAvgTrx').innerText = 'Rp ' + avgTrx.toLocaleString('id-ID');
+
+            // Top Products Array (Berdasarkan Qty Terbanyak)
+            const topProducts = Object.keys(productMap).map(b => productMap[b]).sort((a, b) => b.qty - a.qty);
+
+            if (topProducts.length > 0) {
+                const topP = topProducts[0];
+                document.getElementById('analyticsTopProduct').innerText = `[${topP.barcode}] ${topP.name} (Rp ${topP.price.toLocaleString('id-ID')}) - ${topP.qty} Pcs`;
+            } else {
+                document.getElementById('analyticsTopProduct').innerText = '-';
+            }
+
+            // Top Cashier Array
+            const cashierStats = Object.keys(cashierMap).map(c => ({
+                name: c,
+                count: cashierMap[c].count,
+                omset: cashierMap[c].omset
+            })).sort((a, b) => b.omset - a.omset);
+
+            if (cashierStats.length > 0) {
+                document.getElementById('analyticsTopCashier').innerText = cashierStats[0].name + ' (' + cashierStats[0].count + ' Trx)';
+            } else {
+                document.getElementById('analyticsTopCashier').innerText = '-';
+            }
+
+            // Render Tabel Top 5 Produk Terlaris
+            const topProdTbody = document.getElementById('topProductsTable');
+            topProdTbody.innerHTML = '';
+            topProducts.slice(0, 5).forEach(p => {
+                topProdTbody.innerHTML += `
+                    <tr>
+                        <td><b>${p.barcode}</b></td>
+                        <td>${p.name}</td>
+                        <td>Rp ${p.price.toLocaleString('id-ID')}</td>
+                        <td>${p.qty} Pcs</td>
+                        <td>Rp ${p.omset.toLocaleString('id-ID')}</td>
+                    </tr>
+                `;
+            });
+
+            // Render Tabel Performa Kasir
+            const cashierTbody = document.getElementById('cashierPerformanceTable');
+            cashierTbody.innerHTML = '';
+            cashierStats.forEach(c => {
+                cashierTbody.innerHTML += `
+                    <tr>
+                        <td><b>${c.name}</b></td>
+                        <td>${c.count} Transaksi</td>
+                        <td>Rp ${c.omset.toLocaleString('id-ID')}</td>
+                    </tr>
+                `;
+            });
+        }
+
         function changeHistoryPage(page) {
             currentHistoryPage = page;
             renderHistory();
         }
 
-        function reprintByClick(index) {
+        async function reprintByClick(index) {
             const trx = salesHistory[index];
             if (!trx) return;
 
-            populateAndPrintReceipt(trx, trx.id.startsWith('RET-'));
+            await populateAndPrintReceipt(trx, trx.id.startsWith('RET-'));
         }
 
         function clearHistory() {
@@ -1837,8 +2282,9 @@
                 localStorage.removeItem('salesHistory');
                 currentHistoryPage = 1;
                 renderHistory();
+                renderAnalytics();
             }
         }
     </script>
 </body>
-</html>
+    </html>
